@@ -1336,7 +1336,7 @@ input, textarea, select { font-family: var(--font); outline: none; }
       {% endif %}
 
       {% for key, post in posts.items()|sort(attribute='1.timestamp', reverse=True) %}
-      <div class="post-card {% if post.pinned %}pinned{% endif %}" id="post-{{ key }}" data-user="{{ post.user }}" data-likes="{{ post.likes|length if post.likes and post.likes is mapping else 0 }}" data-tags="{{ (post.tags or [])|join(',') }}" data-real-user="{{ post.real_user or post.user }}">
+      <div class="post-card {% if post.pinned %}pinned{% endif %}" id="post-{{ key }}" data-user="{{ post.user }}" data-likes="{{ post.likes|length if post.likes and post.likes is mapping else 0 }}" data-tags="{{ (post.tags or [])|join(',') }}" data-real-user="{{ post.real_user or post.user }}" data-timestamp="{{ post.timestamp or '' }}">
         <div class="post-header">
           <div class="post-avatar" style="background: linear-gradient(135deg, hsl({{ loop.index * 47 % 360 }}, 60%, 55%), hsl({{ (loop.index * 47 + 60) % 360 }}, 60%, 45%))">
             {{ post.user[0]|upper }}
@@ -2672,19 +2672,6 @@ function editPost(id, currentContent) {
 
 // ===== BOOKMARK =====
 function initBookmarks() {
-  // Merge localStorage bookmarks with Firebase bookmarks
-  fetch('/get_bookmarks')
-    .then(r => r.json())
-    .then(data => {
-      const serverBM = data.bookmarks || [];
-      // Merge both sources
-      serverBM.forEach(id => { if (!bookmarks.includes(id)) bookmarks.push(id); });
-      localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
-      applyBookmarkUI();
-    })
-    .catch(() => { applyBookmarkUI(); }); // fallback to localStorage only
-}
-function applyBookmarkUI() {
   bookmarks.forEach(id => {
     const btn = document.getElementById('bm-' + id);
     if (btn) {
@@ -2709,12 +2696,6 @@ function toggleBookmark(id, btn) {
     showToast('Bookmarked! ✨', 'success');
   }
   localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
-  // Sync bookmarks to Firebase for cross-device persistence
-  fetch('/save_bookmarks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bookmarks: bookmarks })
-  }).catch(() => {});
 }
 function pinPost(id) {
   fetch('/pin_post', {
@@ -2738,20 +2719,35 @@ function sharePost(content) {
 }
 
 // ===== FILTER TABS =====
+// ===== TRENDING SCORE (likes + recency, Reddit-style) =====
+function getTrendingScore(postEl) {
+  const likes = parseInt(postEl.getAttribute('data-likes') || 0);
+  const tsRaw = postEl.getAttribute('data-timestamp') || '';
+
+  // Parse timestamp format: 'YYYY-MM-DD HH:MM'
+  let hoursAgo = 48; // default if no timestamp
+  if (tsRaw) {
+    const parsed = new Date(tsRaw.replace(' ', 'T'));
+    if (!isNaN(parsed)) {
+      hoursAgo = Math.max(0, (Date.now() - parsed.getTime()) / 3600000);
+    }
+  }
+
+  // Reddit-style score: likes / (hoursAgo + 2)^1.5
+  // A post with 5 likes from 1hr ago beats a post with 20 likes from 3 days ago
+  const score = likes / Math.pow(hoursAgo + 2, 1.5);
+
+  // Only qualify if at least 1 like AND posted within last 7 days
+  if (likes < 1 || hoursAgo > 168) return 0;
+  return score;
+}
+
 function filterTab(type, btn) {
-  // Close notes section if open
-  if (typeof closeNotesSection === 'function') closeNotesSection();
   // Update active tab styling
   document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
   // Also sync nav-menu items
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (btn) {
-    // Sync the matching nav-item too
-    document.querySelectorAll('.nav-item').forEach(n => {
-      if (n.getAttribute('onclick') === btn.getAttribute('onclick')) n.classList.add('active');
-    });
-  }
 
   const posts = document.querySelectorAll('.post-card');
   posts.forEach(post => {
@@ -2767,10 +2763,23 @@ function filterTab(type, btn) {
     } else if (type === 'bookmarked') {
       show = bookmarks.includes(postKey);
     } else if (type === 'trending') {
-      show = likes >= 3;
+      const score = getTrendingScore(post);
+      show = score > 0;
+      post.setAttribute('data-trend-score', score);
     }
     post.style.display = show ? 'block' : 'none';
   });
+
+  // Sort trending posts by score (highest first)
+  if (type === 'trending') {
+    const feed = document.getElementById('posts-feed');
+    const allCards = [...feed.querySelectorAll('.post-card')];
+    allCards
+      .filter(p => p.style.display !== 'none')
+      .sort((a, b) => parseFloat(b.getAttribute('data-trend-score') || 0) - parseFloat(a.getAttribute('data-trend-score') || 0))
+      .forEach(card => feed.appendChild(card));
+  }
+
   // Rebuild widgets after filter changes
   setTimeout(() => { buildLeaderboard(); buildMoodChart(); countUserLikes(); }, 50);
   // Show empty message if nothing visible
@@ -4137,7 +4146,12 @@ function closeNotesSection() {
   document.getElementById('posts-feed') && (document.getElementById('posts-feed').style.display = '');
 }
 
-// Notes section auto-close is now handled inside the main filterTab above
+// Patch filterTab to also close notes section when switching back to posts
+const _origFilterTab = filterTab;
+function filterTab(type, btn) {
+  closeNotesSection();
+  _origFilterTab(type, btn);
+}
 
 // ---- Load notes from server ----
 async function notesLoad() {
