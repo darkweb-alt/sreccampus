@@ -2672,6 +2672,19 @@ function editPost(id, currentContent) {
 
 // ===== BOOKMARK =====
 function initBookmarks() {
+  // Merge localStorage bookmarks with Firebase bookmarks
+  fetch('/get_bookmarks')
+    .then(r => r.json())
+    .then(data => {
+      const serverBM = data.bookmarks || [];
+      // Merge both sources
+      serverBM.forEach(id => { if (!bookmarks.includes(id)) bookmarks.push(id); });
+      localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
+      applyBookmarkUI();
+    })
+    .catch(() => { applyBookmarkUI(); }); // fallback to localStorage only
+}
+function applyBookmarkUI() {
   bookmarks.forEach(id => {
     const btn = document.getElementById('bm-' + id);
     if (btn) {
@@ -2696,6 +2709,12 @@ function toggleBookmark(id, btn) {
     showToast('Bookmarked! ✨', 'success');
   }
   localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
+  // Sync bookmarks to Firebase for cross-device persistence
+  fetch('/save_bookmarks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmarks: bookmarks })
+  }).catch(() => {});
 }
 function pinPost(id) {
   fetch('/pin_post', {
@@ -2720,11 +2739,19 @@ function sharePost(content) {
 
 // ===== FILTER TABS =====
 function filterTab(type, btn) {
+  // Close notes section if open
+  if (typeof closeNotesSection === 'function') closeNotesSection();
   // Update active tab styling
   document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
   // Also sync nav-menu items
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (btn) {
+    // Sync the matching nav-item too
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.getAttribute('onclick') === btn.getAttribute('onclick')) n.classList.add('active');
+    });
+  }
 
   const posts = document.querySelectorAll('.post-card');
   posts.forEach(post => {
@@ -2740,7 +2767,7 @@ function filterTab(type, btn) {
     } else if (type === 'bookmarked') {
       show = bookmarks.includes(postKey);
     } else if (type === 'trending') {
-      show = likes >= 1;
+      show = likes >= 3;
     }
     post.style.display = show ? 'block' : 'none';
   });
@@ -4110,12 +4137,7 @@ function closeNotesSection() {
   document.getElementById('posts-feed') && (document.getElementById('posts-feed').style.display = '');
 }
 
-// Patch filterTab to also close notes section when switching back to posts
-const _origFilterTab = filterTab;
-function filterTab(type, btn) {
-  closeNotesSection();
-  _origFilterTab(type, btn);
-}
+// Notes section auto-close is now handled inside the main filterTab above
 
 // ---- Load notes from server ----
 async function notesLoad() {
