@@ -1,0 +1,42 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# VS Code settings
+.vscode/
+
+# Environment variables
+.env
+
+# Flask instance folder
+instance/
+
+# Logs
+*.log
+
+# Database files
+*.db
+*.sqlite3
+
+# Mac files
+.DS_Store
+
+# Windows files
+Thumbs.db
+
+# Python distribution
+build/
+dist/
+*.egg-info/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+
+*.json
+october11-868ab-firebase-adminsdk-fbsvc-6fca641dde.json
