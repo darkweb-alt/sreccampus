@@ -1,12 +1,12 @@
 import os
 import json
 import tempfile
+import glob
+import requests
+import uuid
 
 from dotenv import load_dotenv
 load_dotenv()
-
-import requests
-import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import firebase_admin
@@ -17,7 +17,7 @@ import re
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET', 'srec_demo_secret_2025')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = False  # Set True if HTTPS
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE','False') == 'True'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 # ------------------ Firebase Admin Setup ------------------
@@ -29,18 +29,16 @@ try:
     firebase_creds_json = os.environ.get("FIREBASE_CREDS_JSON")
     if firebase_creds_json:
         creds_dict = json.loads(firebase_creds_json)
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(creds_dict, f)
-            tmp_path = f.name
-        cred = credentials.Certificate(tmp_path)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as _f:
+            json.dump(creds_dict, _f)
+            _tmp = _f.name
+        cred = credentials.Certificate(_tmp)
     else:
-        import glob
-        json_files = glob.glob("*.json")
-        firebase_json = next((f for f in json_files if "firebase-adminsdk" in f), None)
-        if firebase_json:
-            cred = credentials.Certificate(firebase_json)
-        else:
-            raise FileNotFoundError("No Firebase JSON found locally.")
+        _jsons = glob.glob("*.json")
+        _fb = next((f for f in _jsons if "firebase-adminsdk" in f), None)
+        if not _fb:
+            raise FileNotFoundError("No Firebase JSON found. Add FIREBASE_CREDS_JSON env var on Render.")
+        cred = credentials.Certificate(_fb)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://october11-868ab-default-rtdb.firebaseio.com/'
     })
@@ -1522,7 +1520,6 @@ def save_bio():
     uid = session.get('user')
     db.reference(f'/users/{uid}').update({'bio': bio})
     return jsonify({'success': True})
-
 # =====================================================================
 # BOOKMARKS (Firebase-backed, cross-device)
 # =====================================================================
@@ -1541,6 +1538,8 @@ def get_bookmarks():
     uid = session.get('user')
     user_data = db.reference(f'/users/{uid}').get() or {}
     return jsonify({'bookmarks': user_data.get('bookmarks', [])})
+
+
 
 # =====================================================================
 # EVENTS (Admin Only)

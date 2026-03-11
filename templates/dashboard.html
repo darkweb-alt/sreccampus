@@ -2672,6 +2672,17 @@ function editPost(id, currentContent) {
 
 // ===== BOOKMARK =====
 function initBookmarks() {
+  fetch('/get_bookmarks')
+    .then(r => r.json())
+    .then(data => {
+      const serverBM = data.bookmarks || [];
+      serverBM.forEach(id => { if (!bookmarks.includes(id)) bookmarks.push(id); });
+      localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
+      applyBookmarkUI();
+    })
+    .catch(() => applyBookmarkUI());
+}
+function applyBookmarkUI() {
   bookmarks.forEach(id => {
     const btn = document.getElementById('bm-' + id);
     if (btn) {
@@ -2696,6 +2707,11 @@ function toggleBookmark(id, btn) {
     showToast('Bookmarked! ✨', 'success');
   }
   localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
+  fetch('/save_bookmarks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmarks: bookmarks })
+  }).catch(() => {});
 }
 function pinPost(id) {
   fetch('/pin_post', {
@@ -2719,30 +2735,21 @@ function sharePost(content) {
 }
 
 // ===== FILTER TABS =====
-// ===== TRENDING SCORE (likes + recency, Reddit-style) =====
+// ===== TRENDING SCORE (Reddit-style: likes + recency) =====
 function getTrendingScore(postEl) {
   const likes = parseInt(postEl.getAttribute('data-likes') || 0);
   const tsRaw = postEl.getAttribute('data-timestamp') || '';
-
-  // Parse timestamp format: 'YYYY-MM-DD HH:MM'
-  let hoursAgo = 48; // default if no timestamp
+  let hoursAgo = 48;
   if (tsRaw) {
     const parsed = new Date(tsRaw.replace(' ', 'T'));
-    if (!isNaN(parsed)) {
-      hoursAgo = Math.max(0, (Date.now() - parsed.getTime()) / 3600000);
-    }
+    if (!isNaN(parsed)) hoursAgo = Math.max(0, (Date.now() - parsed.getTime()) / 3600000);
   }
-
-  // Reddit-style score: likes / (hoursAgo + 2)^1.5
-  // A post with 5 likes from 1hr ago beats a post with 20 likes from 3 days ago
-  const score = likes / Math.pow(hoursAgo + 2, 1.5);
-
-  // Only qualify if at least 1 like AND posted within last 7 days
   if (likes < 1 || hoursAgo > 168) return 0;
-  return score;
+  return likes / Math.pow(hoursAgo + 2, 1.5);
 }
 
 function filterTab(type, btn) {
+  if (typeof closeNotesSection === 'function') closeNotesSection();
   // Update active tab styling
   document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -2769,17 +2776,14 @@ function filterTab(type, btn) {
     }
     post.style.display = show ? 'block' : 'none';
   });
-
-  // Sort trending posts by score (highest first)
+  // Sort trending posts by score
   if (type === 'trending') {
-    const feed = document.getElementById('posts-feed');
-    const allCards = [...feed.querySelectorAll('.post-card')];
-    allCards
+    const feedEl = document.getElementById('posts-feed');
+    [...feedEl.querySelectorAll('.post-card')]
       .filter(p => p.style.display !== 'none')
       .sort((a, b) => parseFloat(b.getAttribute('data-trend-score') || 0) - parseFloat(a.getAttribute('data-trend-score') || 0))
-      .forEach(card => feed.appendChild(card));
+      .forEach(card => feedEl.appendChild(card));
   }
-
   // Rebuild widgets after filter changes
   setTimeout(() => { buildLeaderboard(); buildMoodChart(); countUserLikes(); }, 50);
   // Show empty message if nothing visible
@@ -4146,12 +4150,7 @@ function closeNotesSection() {
   document.getElementById('posts-feed') && (document.getElementById('posts-feed').style.display = '');
 }
 
-// Patch filterTab to also close notes section when switching back to posts
-const _origFilterTab = filterTab;
-function filterTab(type, btn) {
-  closeNotesSection();
-  _origFilterTab(type, btn);
-}
+// Notes close is handled inside the main filterTab
 
 // ---- Load notes from server ----
 async function notesLoad() {
