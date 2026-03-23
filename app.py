@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import requests
 import uuid
 from datetime import datetime
@@ -9,7 +11,7 @@ import re
 
 
 app = Flask(__name__)
-app.secret_key = 'srec_demo_secret_2025'
+app.secret_key = os.environ.get('FLASK_SECRET', 'srec_demo_secret_2025')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False  # Set True if HTTPS
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
@@ -20,21 +22,36 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 #     'databaseURL': 'https://october11-868ab-default-rtdb.firebaseio.com/'
 # })
 try:
-    cred = credentials.Certificate("october11-868ab-firebase-adminsdk-fbsvc-6fca641dde.json")
+    firebase_creds_json = os.environ.get("FIREBASE_CREDS_JSON")
+    if firebase_creds_json:
+        import json as _json_init, tempfile as _tmp_init
+        creds_dict = _json_init.loads(firebase_creds_json)
+        with _tmp_init.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as _f:
+            _json_init.dump(creds_dict, _f)
+            _tmp_path = _f.name
+        cred = credentials.Certificate(_tmp_path)
+    else:
+        import glob as _glob
+        _jsons = _glob.glob("*.json")
+        _fb = next((f for f in _jsons if "firebase-adminsdk" in f), None)
+        if not _fb:
+            raise FileNotFoundError("No Firebase JSON found. Set FIREBASE_CREDS_JSON env var.")
+        cred = credentials.Certificate(_fb)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://october11-868ab-default-rtdb.firebaseio.com/'
     })
+    print("Firebase initialized successfully!")
 except Exception as e:
     print("Firebase init error:", e)
-FIREBASE_API_KEY = "AIzaSyCS_00jpLwOXDuSoPK8pRhJL9jbzwC5-wc"
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY")
 
 # ------------------ Google Custom Search ------------------
-CSE_API_KEY = "AIzaSyDnA4mSjKF3fNZJIkKwqVkjmcmomc0uNmc"
-CSE_CX = "22ebcf6c51cdb481d"
+CSE_API_KEY = os.environ.get("CSE_API_KEY")
+CSE_CX = os.environ.get("CSE_CX")
 
 # ------------------ Groq AI Setup ------------------
 # GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
-GROQ_API_KEY="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"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 from groq import Groq
 groq_client = Groq(api_key=GROQ_API_KEY)
@@ -56,9 +73,9 @@ import cloudinary
 import cloudinary.uploader
 
 cloudinary.config(
-    cloud_name = "dxmnmfloq",
-    api_key    = "572959442148374",
-    api_secret = "2s7ZkndxzWC6IAsmtO_nPjb5PY0",
+    cloud_name = os.environ.get("CLOUDINARY_CLOUD"),
+    api_key    = os.environ.get("CLOUDINARY_KEY"),
+    api_secret = os.environ.get("CLOUDINARY_SECRET"),
     secure     = True
 )
 
@@ -2057,11 +2074,11 @@ def room_quiz_leave():
 # =====================================================================
 # SUPABASE SETUP — Notes Storage
 # =====================================================================
-SUPABASE_URL         = "https://lzuqbdgsefifdwlutlny.supabase.co"
+SUPABASE_URL         = os.environ.get("SUPABASE_URL")
 # Use your SERVICE ROLE key (Settings -> API -> service_role secret key)
 # NOT the publishable/anon key — that cannot write to storage
-SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6dXFiZGdzZWZpZmR3bHV0bG55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjk2NDUxOCwiZXhwIjoyMDg4NTQwNTE4fQ.JXxYjrxqmRDT-1wTgtyPqrabMiDqbYBV4LgO5gTcMbE"  # <-- REPLACE THIS
-SUPABASE_ANON_KEY    = "sb_publishable_oDBEcD8pDeXPnOk05Wqs4g_Usn-o7Yd"
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+SUPABASE_ANON_KEY    = os.environ.get("SUPABASE_ANON_KEY")
 NOTES_BUCKET         = "notes"
 
 def get_supabase_public_url(bucket, filename):
