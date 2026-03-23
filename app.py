@@ -1,12 +1,6 @@
 import os
-import json
-import tempfile
-import glob
 import requests
 import uuid
-
-from dotenv import load_dotenv
-load_dotenv()
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import firebase_admin
@@ -15,9 +9,9 @@ import re
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET', 'srec_demo_secret_2025')
+app.secret_key = 'srec_demo_secret_2025'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE','False') == 'True'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set True if HTTPS
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 # ------------------ Firebase Admin Setup ------------------
@@ -26,34 +20,21 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 #     'databaseURL': 'https://october11-868ab-default-rtdb.firebaseio.com/'
 # })
 try:
-    firebase_creds_json = os.environ.get("FIREBASE_CREDS_JSON")
-    if firebase_creds_json:
-        creds_dict = json.loads(firebase_creds_json)
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as _f:
-            json.dump(creds_dict, _f)
-            _tmp = _f.name
-        cred = credentials.Certificate(_tmp)
-    else:
-        _jsons = glob.glob("*.json")
-        _fb = next((f for f in _jsons if "firebase-adminsdk" in f), None)
-        if not _fb:
-            raise FileNotFoundError("No Firebase JSON found. Add FIREBASE_CREDS_JSON env var on Render.")
-        cred = credentials.Certificate(_fb)
+    cred = credentials.Certificate("october11-868ab-firebase-adminsdk-fbsvc-6fca641dde.json")
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://october11-868ab-default-rtdb.firebaseio.com/'
     })
-    print("Firebase initialized successfully!")
 except Exception as e:
     print("Firebase init error:", e)
-FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY")
+FIREBASE_API_KEY = "AIzaSyCS_00jpLwOXDuSoPK8pRhJL9jbzwC5-wc"
 
 # ------------------ Google Custom Search ------------------
-CSE_API_KEY = os.environ.get("CSE_API_KEY")
-CSE_CX = os.environ.get("CSE_CX")
+CSE_API_KEY = "AIzaSyDnA4mSjKF3fNZJIkKwqVkjmcmomc0uNmc"
+CSE_CX = "22ebcf6c51cdb481d"
 
 # ------------------ Groq AI Setup ------------------
 # GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_API_KEY="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"
 
 from groq import Groq
 groq_client = Groq(api_key=GROQ_API_KEY)
@@ -75,9 +56,9 @@ import cloudinary
 import cloudinary.uploader
 
 cloudinary.config(
-    cloud_name = os.environ.get("CLOUDINARY_CLOUD"),
-    api_key    = os.environ.get("CLOUDINARY_KEY"),
-    api_secret = os.environ.get("CLOUDINARY_SECRET"),
+    cloud_name = "dxmnmfloq",
+    api_key    = "572959442148374",
+    api_secret = "2s7ZkndxzWC6IAsmtO_nPjb5PY0",
     secure     = True
 )
 
@@ -1336,7 +1317,9 @@ def chat():
         )})
 
 @app.route('/widget')
-def widget(): return render_template('chat_widget.html')
+def widget():
+    logged_in = 'user' in session
+    return render_template('chat_widget.html', logged_in=logged_in)
 
 # =====================================================================
 # POSTS & SOCIAL
@@ -1520,26 +1503,6 @@ def save_bio():
     uid = session.get('user')
     db.reference(f'/users/{uid}').update({'bio': bio})
     return jsonify({'success': True})
-# =====================================================================
-# BOOKMARKS (Firebase-backed, cross-device)
-# =====================================================================
-@app.route('/save_bookmarks', methods=['POST'])
-def save_bookmarks():
-    if 'user' not in session: return jsonify({'success': False}), 401
-    uid = session.get('user')
-    data = request.get_json() or {}
-    bookmarks = data.get('bookmarks', [])
-    db.reference(f'/users/{uid}').update({'bookmarks': bookmarks})
-    return jsonify({'success': True})
-
-@app.route('/get_bookmarks')
-def get_bookmarks():
-    if 'user' not in session: return jsonify({'bookmarks': []})
-    uid = session.get('user')
-    user_data = db.reference(f'/users/{uid}').get() or {}
-    return jsonify({'bookmarks': user_data.get('bookmarks', [])})
-
-
 
 # =====================================================================
 # EVENTS (Admin Only)
@@ -2094,11 +2057,11 @@ def room_quiz_leave():
 # =====================================================================
 # SUPABASE SETUP — Notes Storage
 # =====================================================================
-SUPABASE_URL         = os.environ.get("SUPABASE_URL")
+SUPABASE_URL         = "https://lzuqbdgsefifdwlutlny.supabase.co"
 # Use your SERVICE ROLE key (Settings -> API -> service_role secret key)
 # NOT the publishable/anon key — that cannot write to storage
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
-SUPABASE_ANON_KEY    = os.environ.get("SUPABASE_ANON_KEY")
+SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6dXFiZGdzZWZpZmR3bHV0bG55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjk2NDUxOCwiZXhwIjoyMDg4NTQwNTE4fQ.JXxYjrxqmRDT-1wTgtyPqrabMiDqbYBV4LgO5gTcMbE"  # <-- REPLACE THIS
+SUPABASE_ANON_KEY    = "sb_publishable_oDBEcD8pDeXPnOk05Wqs4g_Usn-o7Yd"
 NOTES_BUCKET         = "notes"
 
 def get_supabase_public_url(bucket, filename):
@@ -2340,6 +2303,44 @@ def delete_note():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+
+# =====================================================================
+# PWA — Manifest, Service Worker & Asset Links
+# =====================================================================
+import json as _json_mod
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
+@app.route('/service-worker.js')
+def service_worker():
+    response = app.make_response(app.send_static_file('service-worker.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+@app.route('/.well-known/assetlinks.json')
+def asset_links():
+    # Replace sha256_cert_fingerprints with your Bubblewrap signing key fingerprint
+    links = [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "in.connectsrec.app",
+            "sha256_cert_fingerprints": [
+                "REPLACE_WITH_YOUR_BUBBLEWRAP_SIGNING_KEY_FINGERPRINT"
+            ]
+        }
+    }]
+    response = app.response_class(
+        response=_json_mod.dumps(links, indent=2),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

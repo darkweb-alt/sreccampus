@@ -1146,6 +1146,18 @@ input, textarea, select { font-family: var(--font); outline: none; }
 @keyframes quizPanelIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 #sr-panel-quiz, #sr-panel-result, #sr-panel-rq-lobby, #sr-panel-rq-quiz, #sr-panel-rq-result { animation: quizPanelIn 0.28s ease; }
 </style>
+
+  <!-- ===== PWA ===== -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366F1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CampusConnect">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/static/icons/icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/static/icons/icon-512x512.png">
 </head>
 
 <body>
@@ -1336,7 +1348,7 @@ input, textarea, select { font-family: var(--font); outline: none; }
       {% endif %}
 
       {% for key, post in posts.items()|sort(attribute='1.timestamp', reverse=True) %}
-      <div class="post-card {% if post.pinned %}pinned{% endif %}" id="post-{{ key }}" data-user="{{ post.user }}" data-likes="{{ post.likes|length if post.likes and post.likes is mapping else 0 }}" data-tags="{{ (post.tags or [])|join(',') }}" data-real-user="{{ post.real_user or post.user }}" data-timestamp="{{ post.timestamp or '' }}">
+      <div class="post-card {% if post.pinned %}pinned{% endif %}" id="post-{{ key }}" data-user="{{ post.user }}" data-likes="{{ post.likes|length if post.likes and post.likes is mapping else 0 }}" data-tags="{{ (post.tags or [])|join(',') }}" data-real-user="{{ post.real_user or post.user }}">
         <div class="post-header">
           <div class="post-avatar" style="background: linear-gradient(135deg, hsl({{ loop.index * 47 % 360 }}, 60%, 55%), hsl({{ (loop.index * 47 + 60) % 360 }}, 60%, 45%))">
             {{ post.user[0]|upper }}
@@ -2672,17 +2684,6 @@ function editPost(id, currentContent) {
 
 // ===== BOOKMARK =====
 function initBookmarks() {
-  fetch('/get_bookmarks')
-    .then(r => r.json())
-    .then(data => {
-      const serverBM = data.bookmarks || [];
-      serverBM.forEach(id => { if (!bookmarks.includes(id)) bookmarks.push(id); });
-      localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
-      applyBookmarkUI();
-    })
-    .catch(() => applyBookmarkUI());
-}
-function applyBookmarkUI() {
   bookmarks.forEach(id => {
     const btn = document.getElementById('bm-' + id);
     if (btn) {
@@ -2707,11 +2708,6 @@ function toggleBookmark(id, btn) {
     showToast('Bookmarked! ✨', 'success');
   }
   localStorage.setItem('srec_bookmarks', JSON.stringify(bookmarks));
-  fetch('/save_bookmarks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bookmarks: bookmarks })
-  }).catch(() => {});
 }
 function pinPost(id) {
   fetch('/pin_post', {
@@ -2735,21 +2731,7 @@ function sharePost(content) {
 }
 
 // ===== FILTER TABS =====
-// ===== TRENDING SCORE (Reddit-style: likes + recency) =====
-function getTrendingScore(postEl) {
-  const likes = parseInt(postEl.getAttribute('data-likes') || 0);
-  const tsRaw = postEl.getAttribute('data-timestamp') || '';
-  let hoursAgo = 48;
-  if (tsRaw) {
-    const parsed = new Date(tsRaw.replace(' ', 'T'));
-    if (!isNaN(parsed)) hoursAgo = Math.max(0, (Date.now() - parsed.getTime()) / 3600000);
-  }
-  if (likes < 1 || hoursAgo > 168) return 0;
-  return likes / Math.pow(hoursAgo + 2, 1.5);
-}
-
 function filterTab(type, btn) {
-  if (typeof closeNotesSection === 'function') closeNotesSection();
   // Update active tab styling
   document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -2770,20 +2752,10 @@ function filterTab(type, btn) {
     } else if (type === 'bookmarked') {
       show = bookmarks.includes(postKey);
     } else if (type === 'trending') {
-      const score = getTrendingScore(post);
-      show = score > 0;
-      post.setAttribute('data-trend-score', score);
+      show = likes >= 1;
     }
     post.style.display = show ? 'block' : 'none';
   });
-  // Sort trending posts by score
-  if (type === 'trending') {
-    const feedEl = document.getElementById('posts-feed');
-    [...feedEl.querySelectorAll('.post-card')]
-      .filter(p => p.style.display !== 'none')
-      .sort((a, b) => parseFloat(b.getAttribute('data-trend-score') || 0) - parseFloat(a.getAttribute('data-trend-score') || 0))
-      .forEach(card => feedEl.appendChild(card));
-  }
   // Rebuild widgets after filter changes
   setTimeout(() => { buildLeaderboard(); buildMoodChart(); countUserLikes(); }, 50);
   // Show empty message if nothing visible
@@ -4150,7 +4122,12 @@ function closeNotesSection() {
   document.getElementById('posts-feed') && (document.getElementById('posts-feed').style.display = '');
 }
 
-// Notes close is handled inside the main filterTab
+// Patch filterTab to also close notes section when switching back to posts
+const _origFilterTab = filterTab;
+function filterTab(type, btn) {
+  closeNotesSection();
+  _origFilterTab(type, btn);
+}
 
 // ---- Load notes from server ----
 async function notesLoad() {
@@ -4459,6 +4436,93 @@ async function noteUpload() {
     <iframe class="note-preview-iframe" id="note-preview-iframe" src=""></iframe>
   </div>
 </div>
+
+
+<!-- ===== PWA: Service Worker + Install Prompt ===== -->
+<div id="pwa-install-banner" style="
+  display:none; position:fixed; bottom:90px; left:50%;
+  transform:translateX(-50%);
+  background:linear-gradient(135deg,#6366F1,#4F46E5);
+  color:white; padding:12px 22px; border-radius:99px;
+  font-size:0.87em; font-weight:700;
+  box-shadow:0 8px 32px rgba(99,102,241,0.5);
+  z-index:9999; cursor:pointer; white-space:nowrap;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  align-items:center; gap:10px;
+">
+  📱 Install CampusConnect App
+  <span id="pwa-banner-close" style="opacity:0.7;font-size:1em;margin-left:8px;font-weight:900;">✕</span>
+</div>
+
+<script>
+// ── SERVICE WORKER ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .then(reg => {
+        console.log('✅ Service Worker registered:', reg.scope);
+        setInterval(() => reg.update(), 60000);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('🔄 New version available! Refresh to update.', 'info');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+// ── INSTALL PROMPT ──────────────────────────────────────────────
+let _deferredPrompt = null;
+const _installBanner = document.getElementById('pwa-install-banner');
+const _bannerClose = document.getElementById('pwa-banner-close');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  // Don't show if already running as standalone (installed)
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  _installBanner.style.display = 'flex';
+});
+
+if (_installBanner) {
+  _installBanner.addEventListener('click', (e) => {
+    if (e.target === _bannerClose || e.target.id === 'pwa-banner-close') {
+      _installBanner.style.display = 'none';
+      return;
+    }
+    _installBanner.style.display = 'none';
+    if (_deferredPrompt) {
+      _deferredPrompt.prompt();
+      _deferredPrompt.userChoice.then(choice => {
+        if (choice.outcome === 'accepted') {
+          showToast('🎉 CampusConnect installed successfully!', 'success');
+        }
+        _deferredPrompt = null;
+      });
+    }
+  });
+}
+
+// ── STANDALONE MODE TWEAKS ──────────────────────────────────────
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  console.log('Running as installed PWA ✅');
+  // Hide the chatbot FAB install banner if already installed
+  const fab = document.getElementById('chatbot-fab');
+  if (fab) fab.style.bottom = '16px';
+}
+
+// ── APP INSTALLED EVENT ─────────────────────────────────────────
+window.addEventListener('appinstalled', () => {
+  _deferredPrompt = null;
+  _installBanner.style.display = 'none';
+  showToast('🎉 CampusConnect added to your home screen!', 'success');
+  console.log('PWA installed ✅');
+});
+</script>
 
 </body>
 </html>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>SREC Bot Chat Widget</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="user-logged-in" content="{{ 'true' if logged_in else 'false' }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -322,7 +323,22 @@
     }
   }
 
+  // Track if user is logged in — the server passes this via a meta tag
+  const IS_LOGGED_IN = document.querySelector('meta[name="user-logged-in"]')?.content === 'true';
+
+  const QP_KEYWORDS = ['question paper', 'mad question', 'beee question', 'sensors question'];
+
   function sendQuick(text) {
+    const lower = text.toLowerCase();
+    const isQP = QP_KEYWORDS.some(k => lower.includes(k));
+    if (isQP && !IS_LOGGED_IN) {
+      addMessage(
+        '🔒 <b>Question papers are for logged-in students only.</b><br>' +
+        'Please <a href="/login" target="_parent">login to CampusConnect</a> to access them!',
+        false, getTime()
+      );
+      return;
+    }
     document.getElementById('userInput').value = text;
     sendMessage(text);
   }
@@ -333,7 +349,10 @@
       addMessage(
         `👋 <b>Hello! I'm SREC Bot.</b><br><br>` +
         `I can answer anything about <b>Sri Ramakrishna Engineering College</b> — ` +
-        `courses, admissions, placements, question papers, clubs & more!<br><br>` +
+        `courses, admissions, placements, clubs, faculty & more!<br><br>` +
+        (IS_LOGGED_IN
+          ? `📄 <b>Question papers</b> are also available — use the buttons below!<br><br>`
+          : `🔒 <b>Question papers</b> require login — <a href="/login" target="_parent">Login here</a>.<br><br>`) +
         `Use the shortcut buttons below or just type your question 😊`,
         false, getTime()
       );
