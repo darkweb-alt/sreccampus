@@ -8,6 +8,33 @@ from flask import Flask, request, jsonify, render_template, session, redirect, u
 import firebase_admin
 from firebase_admin import credentials, db, auth
 import re
+from functools import wraps
+import html as _html
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user' not in session:
+            return redirect('/')
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user' not in session:
+            return redirect('/')
+        if session.get('role') != 'admin':
+            return jsonify({'success': False, 'msg': 'Unauthorized'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def sanitize_text(text, max_len=2000):
+    if not text:
+        return ''
+    text = _html.escape(str(text).strip())
+    return text[:max_len]
+
 
 
 app = Flask(__name__)
@@ -44,6 +71,9 @@ try:
 except Exception as e:
     print("Firebase init error:", e)
 FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY")
+
+# Web3Forms
+WEB3FORMS_ACCESS_KEY = os.environ.get("WEB3FORMS_ACCESS_KEY", "8c045e34-48f9-417e-9c69-6072fab71bdf")
 
 # ------------------ Google Custom Search ------------------
 CSE_API_KEY = os.environ.get("CSE_API_KEY")
@@ -454,7 +484,7 @@ SREC_KNOWLEDGE = {
     # =====================  HODs  =====================
     'hod cse': (
         "💻 <b>HOD of CSE (Computer Science & Engineering):</b><br>"
-        "👩‍💼 <b>Dr. M. S. GEETHA DEVASENA</b><br>"
+        "👩‍💼 <b>Dr. A. Grace Selvarani</b><br>"
         "Designation: Professor & Head, CSE<br>"
         "Qualification: M.E (CSE), Ph.D | Specialization: Image Processing<br>"
         "Also serves as Controller of Examinations (CoE) at SREC.<br>"
@@ -1095,8 +1125,8 @@ def forgot_password():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     ROLE_CODES = {
-        'faculty': 'SREC@FAC2025',
-        'admin':   'SREC@ADM2025'
+        'faculty': os.environ.get('ROLE_CODE_FACULTY', 'SREC@FAC2025'),
+        'admin':   os.environ.get('ROLE_CODE_ADMIN', 'SREC@ADM2025')
     }
     if request.method == 'POST':
         userid      = request.form.get('userid', '').strip()
@@ -1142,6 +1172,7 @@ def signup():
     return render_template('signup.html')
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     if 'user' not in session: return redirect('/')
     posts = db.reference('/posts').get() or {}
@@ -1514,9 +1545,10 @@ def pin_post():
     return jsonify({'success': False}), 404
 
 @app.route('/save_bio', methods=['POST'])
+@login_required
 def save_bio():
     if 'user' not in session: return jsonify({'success': False}), 401
-    bio = request.get_json().get('bio', '').strip()
+    bio = sanitize_text(request.get_json().get('bio', ''), max_len=300)
     uid = session.get('user')
     db.reference(f'/users/{uid}').update({'bio': bio})
     return jsonify({'success': True})
@@ -1586,6 +1618,7 @@ if not events_ref.get():
 # INNOVATION ROUTES
 # =====================================================================
 @app.route('/enhance_post', methods=['POST'])
+@login_required
 def enhance_post():
     if 'user' not in session: return jsonify({'success': False}), 401
     text = request.get_json().get('text', '').strip()
@@ -1663,7 +1696,7 @@ def study_room():
             else:                dur = f'{diff_mins//60}h {diff_mins%60}m'
         except:
             dur = ''
-        students.append({'email': s.get('email',''), 'subject': s.get('subject',''), 'duration': dur})
+        students.append({'email': s.get('email',''), 'subject': s.get('subject',''), 'duration': dur, 'joined_at': s.get('joined_at','')})
     return jsonify({'students': students})
 
 
@@ -2001,19 +2034,34 @@ def room_quiz_submit():
     code  = data.get('code', '').strip().upper()
     score = int(data.get('score', 0))
     speed = int(data.get('speed_bonus', 0))
-    total = score + speed
+    answers = data.get('answers', [])  # ← NEW: player's chosen answers
 
-    uid   = session.get('user', '')
-    ref   = db.reference(f'/room_quiz/{code}')
-    room  = ref.get()
+    uid = session.get('user', '')
+    ref = db.reference(f'/room_quiz/{code}')
+    room = ref.get()
     if not room:
         return jsonify({'success': False, 'error': 'Room not found'}), 404
 
+    # ← NEW: Server-side scoring to prevent 0 score bug
+    quiz = room.get('quiz', {})
+    questions = quiz.get('questions', [])
+    if answers and questions:
+        server_score = 0
+        for i, q in enumerate(questions):
+            if i < len(answers):
+                correct = str(q.get('answer', '')).strip().upper()[:1]
+                chosen  = str(answers[i] or '').strip().upper()[:1]
+                if chosen == correct:
+                    server_score += 1
+        score = server_score  # Override with verified score
+
+    total = score * 1000 + speed  # ← score × 1000 + speed bonus
+
     ref.child('players').child(uid).update({
-        'score':       score,
-        'speed_bonus': speed,
-        'total':       total,
-        'status':      'done',
+        'score':        score,
+        'speed_bonus':  speed,
+        'total':        total,
+        'status':       'done',
         'submitted_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     })
     return jsonify({'success': True})
@@ -2376,6 +2424,67 @@ def asset_links():
         mimetype='application/json'
     )
     return response
+
+
+# ============================================================
+# CONTACT FORM
+# ============================================================
+
+@app.route('/contact')
+def contact():
+    user_email = session.get('email', '')
+    user_name  = session.get('email', '').split('@')[0].replace('.', ' ').title()
+    return render_template('contact.html', user_email=user_email, user_name=user_name)
+
+
+@app.route('/contact/submit', methods=['POST'])
+def contact_submit():
+    data     = request.get_json() or {}
+    name     = sanitize_text(data.get('name', ''), max_len=100)
+    email    = sanitize_text(data.get('email', ''), max_len=150)
+    subject  = sanitize_text(data.get('subject', ''), max_len=200)
+    message  = sanitize_text(data.get('message', ''), max_len=2000)
+    category = sanitize_text(data.get('category', 'General'), max_len=50)
+    if not name or not email or not message:
+        return jsonify({'success': False, 'msg': 'Name, email and message are required.'}), 400
+    w3_payload = {
+        'access_key': WEB3FORMS_ACCESS_KEY,
+        'name':       name,
+        'email':      email,
+        'subject':    f'[CampusConnect] {subject or category} - {name}',
+        'message':    message,
+        'botcheck':   ''
+    }
+    try:
+        w3_resp = requests.post('https://api.web3forms.com/submit', json=w3_payload, timeout=10)
+        w3_data = w3_resp.json()
+    except Exception as e:
+        return jsonify({'success': False, 'msg': f'Could not send: {e}'}), 500
+    if not w3_data.get('success'):
+        return jsonify({'success': False, 'msg': w3_data.get('message', 'Submission failed.')}), 400
+    try:
+        msg_id = str(uuid.uuid4())
+        db.reference('/contact_messages').child(msg_id).set({
+            'id': msg_id, 'name': name, 'email': email,
+            'subject': subject, 'message': message, 'category': category,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'uid': session.get('user', 'guest'), 'read': False
+        })
+    except Exception:
+        pass
+    return jsonify({'success': True, 'msg': 'Message sent! We will get back to you soon.'})
+
+
+@app.route('/admin/contact_messages')
+def admin_contact_messages():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False}), 403
+    try:
+        msgs = db.reference('/contact_messages').get() or {}
+        result = sorted(msgs.values(), key=lambda x: x.get('timestamp', ''), reverse=True)
+        return jsonify({'success': True, 'messages': result})
+    except Exception as e:
+        return jsonify({'success': False, 'msg': str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

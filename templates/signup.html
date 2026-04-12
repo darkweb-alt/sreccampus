@@ -35,7 +35,7 @@ body {
 }
 .bg-blob {
   position: fixed; border-radius: 50%; pointer-events: none;
-  filter: blur(80px); opacity: 0.22; pointer-events: none; z-index: 0;
+  filter: blur(80px); opacity: 0.22; z-index: 0;
   animation: blobFloat 8s ease-in-out infinite alternate;
 }
 .blob1 { width: 380px; height: 380px; background: #3b5bdb; top: -100px; right: -80px; }
@@ -45,7 +45,6 @@ body {
   from { transform: translate(0, 0) scale(1); }
   to { transform: translate(15px, 20px) scale(1.06); }
 }
-
 .card {
   background: var(--surface); border-radius: var(--radius);
   box-shadow: var(--shadow); width: 460px; max-width: 98vw;
@@ -57,7 +56,6 @@ body {
   from { opacity: 0; transform: translateY(24px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .logo { text-align: center; margin-bottom: 6px; }
 .logo img { height: 60px; width: auto; object-fit: contain; }
 .logo-fallback {
@@ -72,13 +70,8 @@ body {
 .brand-sub { text-align: center; color: var(--text3); font-size: 0.82em; margin-bottom: 24px; }
 
 /* Steps indicator */
-.steps {
-  display: flex; align-items: center; gap: 0;
-  margin-bottom: 28px;
-}
-.step {
-  flex: 1; text-align: center; position: relative;
-}
+.steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+.step { flex: 1; text-align: center; position: relative; }
 .step-circle {
   width: 30px; height: 30px; border-radius: 99px;
   background: var(--border); color: var(--text3);
@@ -91,10 +84,7 @@ body {
 .step-label { font-size: 0.68em; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .step.active .step-label { color: var(--primary); }
 .step.done .step-label { color: var(--success); }
-.step-line {
-  flex: 1; height: 2px; background: var(--border); margin: 0 -1px;
-  position: relative; top: -14px;
-}
+.step-line { flex: 1; height: 2px; background: var(--border); margin: 0 -1px; position: relative; top: -14px; }
 .step-line.done { background: var(--success); }
 
 .alert {
@@ -111,8 +101,7 @@ body {
 .role-card {
   border: 2px solid var(--border); border-radius: 12px;
   padding: 14px 8px; text-align: center; cursor: pointer;
-  transition: all 0.2s; background: var(--surface);
-  position: relative;
+  transition: all 0.2s; background: var(--surface); position: relative;
 }
 .role-card:hover { border-color: var(--primary); background: var(--primary-light); }
 .role-card.selected { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 3px rgba(59,91,219,0.15); }
@@ -162,14 +151,8 @@ body {
 
 /* Password strength */
 .pw-strength { margin-top: 8px; }
-.pw-strength-bar {
-  height: 5px; border-radius: 99px; background: var(--border);
-  overflow: hidden; margin-bottom: 4px;
-}
-.pw-strength-fill {
-  height: 100%; border-radius: 99px; width: 0%;
-  transition: width 0.3s, background 0.3s;
-}
+.pw-strength-bar { height: 5px; border-radius: 99px; background: var(--border); overflow: hidden; margin-bottom: 4px; }
+.pw-strength-fill { height: 100%; border-radius: 99px; width: 0%; transition: width 0.3s, background 0.3s; }
 .pw-strength-text { font-size: 0.72em; font-weight: 700; }
 
 /* Password requirements */
@@ -208,7 +191,6 @@ body {
 .card-footer a { color: var(--primary); font-weight: 700; text-decoration: none; }
 .card-footer a:hover { text-decoration: underline; }
 
-/* Info tooltip */
 .info-tip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 99px;
@@ -227,21 +209,21 @@ body {
 
   <!-- Logo -->
   <div class="logo">
-    <img src="srec-logo.jpeg" alt="SREC Logo"
+    <img src="/static/srec-logo.jpeg" alt="SREC Logo"
          onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='inline-flex'">
     <div class="logo-fallback" id="logo-fallback" style="display:none">CC</div>
   </div>
   <div class="brand-name">Campus<span>Connect</span></div>
   <div class="brand-sub">Create your SREC account</div>
 
-  <!-- Step indicator -->
+  <!-- Step indicator — Step 1 active on load, step 2 becomes active on first input -->
   <div class="steps">
     <div class="step active" id="step1-ind">
       <div class="step-circle">1</div>
       <div class="step-label">Role</div>
     </div>
     <div class="step-line" id="line1"></div>
-    <div class="step active" id="step2-ind">
+    <div class="step" id="step2-ind">
       <div class="step-circle">2</div>
       <div class="step-label">Account</div>
     </div>
@@ -265,7 +247,7 @@ body {
     <span id="client-alert-msg"></span>
   </div>
 
-  <form method="POST" id="signup-form" novalidate autocomplete="off">
+  <form method="POST" id="signup-form" novalidate>
 
     <!-- STEP 1: Choose Role -->
     <div class="field" style="margin-bottom:10px;">
@@ -298,11 +280,11 @@ body {
       </label>
     </div>
 
-    <!-- Secret Code (shown for faculty/admin) -->
+    <!-- Secret Code — validated SERVER-SIDE only, no codes in JS -->
     <div class="secret-field" id="secret-field">
       <label><i class="fas fa-key"></i> Access Code Required</label>
       <div class="field-input-wrap">
-        <i class="fas fa-shield-alt field-icon" style="left:13px;top:50%;transform:translateY(-50%);position:absolute;color:#9a7100;"></i>
+        <i class="fas fa-shield-alt" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#9a7100;font-size:0.88em;pointer-events:none;"></i>
         <input type="password" id="access-code" name="access_code"
                placeholder="Enter your faculty/admin access code"
                style="width:100%;padding:10px 36px;border:1.5px solid #ffd43b;border-radius:8px;background:#fffde7;font-family:var(--font);font-size:0.88em;">
@@ -317,7 +299,7 @@ body {
         <i class="fas fa-envelope field-icon"></i>
         <input type="email" name="userid" id="email-input"
                placeholder="yourname@srec.ac.in"
-               autocomplete="email" required>
+               autocomplete="email" required maxlength="100">
       </div>
       <div class="field-hint" id="email-hint">
         <i class="fas fa-info-circle"></i> Only @srec.ac.in email addresses are allowed
@@ -331,19 +313,17 @@ body {
         <i class="fas fa-lock field-icon"></i>
         <input type="password" name="password" id="password-input"
                placeholder="Create a strong password"
-               autocomplete="new-password" required>
+               autocomplete="new-password" required maxlength="128">
         <button type="button" class="toggle-pw" onclick="togglePw('password-input', this)" tabindex="-1">
           <i class="fas fa-eye"></i>
         </button>
       </div>
-      <!-- Strength bar -->
       <div class="pw-strength">
         <div class="pw-strength-bar">
           <div class="pw-strength-fill" id="strength-fill"></div>
         </div>
         <div class="pw-strength-text" id="strength-text"></div>
       </div>
-      <!-- Requirements -->
       <div class="pw-reqs">
         <div class="pw-req" id="req-len"><i class="fas fa-circle"></i> Min 8 characters</div>
         <div class="pw-req" id="req-upper"><i class="fas fa-circle"></i> Uppercase letter</div>
@@ -352,14 +332,14 @@ body {
       </div>
     </div>
 
-    <!-- Confirm Password -->
+    <!-- Confirm Password — FIXED: added name="confirm_password" -->
     <div class="field">
       <label>Confirm Password</label>
       <div class="field-input-wrap">
         <i class="fas fa-lock field-icon"></i>
-        <input type="password" id="confirm-input"
+        <input type="password" name="confirm_password" id="confirm-input"
                placeholder="Re-enter your password"
-               autocomplete="new-password" required>
+               autocomplete="new-password" required maxlength="128">
         <button type="button" class="toggle-pw" onclick="togglePw('confirm-input', this)" tabindex="-1">
           <i class="fas fa-eye"></i>
         </button>
@@ -371,7 +351,8 @@ body {
     <div class="terms-row">
       <input type="checkbox" id="terms-check" required>
       <label for="terms-check">
-        I agree to the <a href="#">Terms of Use</a> and <a href="#">Privacy Policy</a>.
+        I agree to the <a href="/terms" target="_blank">Terms of Use</a> and
+        <a href="/privacy" target="_blank">Privacy Policy</a>.
         I confirm I am an SREC student, faculty, or staff member.
       </label>
     </div>
@@ -388,32 +369,48 @@ body {
 
 <script>
 // ===== ROLE SELECTION =====
-// Role codes — in production move these to server-side verification
-const ROLE_CODES = {
-  faculty: 'SREC@FAC2025',   // Change these to your actual codes
-  admin: 'SREC@ADM2025'      // Share only with authorised people
-};
+// NOTE: No role codes here — all access code validation is server-side only
 let selectedRole = 'student';
 
 function selectRole(role, card) {
-  // Unselect all
   document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
   card.classList.add('selected');
   card.querySelector('input[type="radio"]').checked = true;
   selectedRole = role;
 
-  // Show/hide secret code
   const secretField = document.getElementById('secret-field');
   const codeInput = document.getElementById('access-code');
   if (role === 'faculty' || role === 'admin') {
     secretField.style.display = 'block';
     codeInput.required = true;
+    // Activate step 1 visually as complete when role with code is selected
+    document.getElementById('step1-ind').classList.add('done');
+    document.getElementById('step1-ind').classList.remove('active');
+    document.getElementById('line1').classList.add('done');
+    document.getElementById('step2-ind').classList.add('active');
   } else {
     secretField.style.display = 'none';
     codeInput.required = false;
     codeInput.value = '';
+    document.getElementById('step1-ind').classList.remove('done');
+    document.getElementById('step1-ind').classList.add('active');
+    document.getElementById('line1').classList.remove('done');
+    document.getElementById('step2-ind').classList.remove('active');
   }
 }
+
+// Activate step 2 indicator when user starts filling account fields
+let step2Activated = false;
+document.getElementById('email-input').addEventListener('focus', function() {
+  if (!step2Activated) {
+    step2Activated = true;
+    document.getElementById('step1-ind').classList.remove('active');
+    document.getElementById('step1-ind').classList.add('done');
+    document.getElementById('step1-ind').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+    document.getElementById('line1').classList.add('done');
+    document.getElementById('step2-ind').classList.add('active');
+  }
+});
 
 // ===== PASSWORD STRENGTH =====
 document.getElementById('password-input').addEventListener('input', function() {
@@ -428,7 +425,6 @@ document.getElementById('password-input').addEventListener('input', function() {
     special: /[^A-Za-z0-9]/.test(pw)
   };
 
-  // Update requirement indicators
   document.getElementById('req-len').className = 'pw-req' + (checks.len ? ' met' : '');
   document.getElementById('req-len').innerHTML = `<i class="fas fa-${checks.len ? 'check' : 'circle'}"></i> Min 8 characters`;
   document.getElementById('req-upper').className = 'pw-req' + (checks.upper ? ' met' : '');
@@ -451,13 +447,12 @@ document.getElementById('password-input').addEventListener('input', function() {
   fill.style.background = cfg.bg;
   text.textContent = cfg.label;
   text.style.color = cfg.bg;
+
+  if (document.getElementById('confirm-input').value) checkConfirm();
 });
 
 // ===== CONFIRM PASSWORD =====
 document.getElementById('confirm-input').addEventListener('input', checkConfirm);
-document.getElementById('password-input').addEventListener('input', function() {
-  if (document.getElementById('confirm-input').value) checkConfirm();
-});
 function checkConfirm() {
   const pw = document.getElementById('password-input').value;
   const cpw = document.getElementById('confirm-input').value;
@@ -507,7 +502,6 @@ document.getElementById('signup-form').addEventListener('submit', function(e) {
   const terms = document.getElementById('terms-check').checked;
   const accessCode = document.getElementById('access-code').value.trim();
 
-  // Email check
   if (!/^[^@]+@srec\.ac\.in$/.test(email)) {
     e.preventDefault();
     showAlert('Only @srec.ac.in email addresses are allowed.');
@@ -515,18 +509,13 @@ document.getElementById('signup-form').addEventListener('submit', function(e) {
     return;
   }
 
-  // Password strength
-  const hasUpper = /[A-Z]/.test(pw);
-  const hasNum = /[0-9]/.test(pw);
-  const hasSpecial = /[^A-Za-z0-9]/.test(pw);
-  if (pw.length < 8 || !hasUpper || !hasNum || !hasSpecial) {
+  if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
     e.preventDefault();
     showAlert('Password must be 8+ characters with uppercase, number, and special character.');
     document.getElementById('password-input').focus();
     return;
   }
 
-  // Confirm password
   if (pw !== cpw) {
     e.preventDefault();
     showAlert('Passwords do not match.');
@@ -534,35 +523,25 @@ document.getElementById('signup-form').addEventListener('submit', function(e) {
     return;
   }
 
-  // Terms
   if (!terms) {
     e.preventDefault();
     showAlert('Please accept the Terms of Use to continue.');
     return;
   }
 
-  // Role access code (client-side pre-check — server also verifies)
-  if ((selectedRole === 'faculty' || selectedRole === 'admin')) {
-    if (!accessCode) {
-      e.preventDefault();
-      showAlert('Access code is required for faculty/admin registration.');
-      document.getElementById('access-code').focus();
-      return;
-    }
-    if (accessCode !== ROLE_CODES[selectedRole]) {
-      e.preventDefault();
-      showAlert('Invalid access code. Please contact college administration.');
-      document.getElementById('access-code').focus();
-      return;
-    }
+  // Only check that code is NOT empty for faculty/admin — actual code verification is server-side
+  if ((selectedRole === 'faculty' || selectedRole === 'admin') && !accessCode) {
+    e.preventDefault();
+    showAlert('Access code is required for faculty/admin registration.');
+    document.getElementById('access-code').focus();
+    return;
   }
 
-  // All good — show loading
+  // All good — show loading state
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
 
-  // Mark step 3 as active for visual feedback
   document.getElementById('step3-ind').classList.add('active');
   document.getElementById('line2').classList.add('done');
 });
@@ -573,7 +552,6 @@ function showAlert(msg) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Clear alert on any input
 document.querySelectorAll('input').forEach(inp => {
   inp.addEventListener('input', () => {
     document.getElementById('client-alert').style.display = 'none';
