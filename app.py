@@ -2404,7 +2404,7 @@ def manifest():
         mimetype='application/manifest+json'
     )
     return response
-@app.route('/.well-known/assetlinks.json')
+@app.route('/.well-known/assetlinks.json', methods=['GET'])
 def asset_links():
     links = [{
         "relation": ["delegate_permission/common.handle_all_urls"],
@@ -2416,7 +2416,9 @@ def asset_links():
             ]
         }
     }]
-    return jsonify(links)
+    response = jsonify(links)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 # ============================================================
 # CONTACT FORM
