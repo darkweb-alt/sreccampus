@@ -2406,7 +2406,17 @@ def manifest():
     return response
 @app.route('/.well-known/assetlinks.json')
 def asset_links():
-    return app.send_static_file('.well-known/assetlinks.json')
+    links = [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "in.connectsrec.twa",
+            "sha256_cert_fingerprints": [
+                "DE:5B:FB:7B:DF:6C:64:C5:1F:47:76:F1:05:81:D1:1B:EA:E6:D5:26:03:E5:20:78:F6:70:B2:EB:68:67:1A:D9"
+            ]
+        }
+    }]
+    return jsonify(links)
 
 # ============================================================
 # CONTACT FORM
