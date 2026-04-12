@@ -38,5 +38,4 @@ dist/
 # Jupyter notebook checkpoints
 .ipynb_checkpoints
 
-*.json
 october11-868ab-firebase-adminsdk-fbsvc-6fca641dde.json

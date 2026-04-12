@@ -215,7 +215,7 @@ input, textarea, select { font-family: var(--font); outline: none; }
   padding: clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 12px);
   border-radius: var(--radius-sm); color: var(--text2);
   font-size: clamp(0.8em, 1.4vw, 0.9em); cursor: pointer;
-  transition: all var(--transition); white-space: nowrap;
+  transition: all var(--transition); white-space: normal;
 }
 .mobile-nav-item:hover { background: var(--surface2); color: var(--primary); }
 .mobile-nav-item i { font-size: 1.1em; width: 20px; text-align: center; }
@@ -1311,6 +1311,99 @@ input, textarea, select { font-family: var(--font); outline: none; }
 .quiz-option:disabled { cursor: default; }
 @keyframes quizPanelIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 #sr-panel-quiz, #sr-panel-result, #sr-panel-rq-lobby, #sr-panel-rq-quiz, #sr-panel-rq-result { animation: quizPanelIn 0.28s ease; }
+/* ===== MOBILE EXPERIENCE FIXES (max 767px) ===== */
+/* ===== MOBILE EXPERIENCE FIXES (max 767px) ===== */
+@media (max-width: 767px) {
+
+  body { padding-bottom: 64px; }
+
+  .user-chip span { display: none; }
+
+  /* Notification dropdown — fixed full width */
+  .notif-dropdown {
+    position: fixed !important;
+    top: var(--header-h) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    border-radius: 12px;
+  }
+
+  /* Modal as bottom sheet */
+  .modal-overlay.open { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100% !important;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0;
+  }
+
+  /* Composer action buttons: icons only */
+  .composer-action-btn span { display: none; }
+  .composer-action-btn { padding: 7px 10px; }
+
+  /* Tag selector: horizontal scroll */
+  .tag-selector {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .tag-selector::-webkit-scrollbar { display: none; }
+
+  /* Feed tabs */
+  .feed-tab { font-size: 0.74em; padding: 7px 8px; }
+
+  /* Post cards */
+  .post-card { padding: 12px; }
+  .action-btn { padding: 5px 8px; font-size: 0.72em; }
+
+  /* Toast */
+  #toast-container { bottom: 72px; right: 12px; left: 12px; }
+  .toast { min-width: unset; width: 100%; }
+
+  /* Chatbot FAB */
+  #chatbot-fab { bottom: 72px; right: 14px; width: 48px; height: 48px; font-size: 1.1em; }
+  #chatbot-popup { bottom: 132px; right: 14px; width: calc(100vw - 28px); }
+
+  /* Hide floating buttons — bottom nav handles it */
+  .fab-group, .fab-mini, .scroll-top-btn { display: none !important; }
+
+  /* Notes grid */
+  .notes-grid { grid-template-columns: 1fr; }
+
+  /* Announcement banner */
+  .announcement-banner .ann-text { font-size: 0.78em; min-width: 0; }
+
+  /* Drawer nav text fix */
+  .mobile-nav-item { white-space: normal; }
+  .mobile-nav-item span { display: inline !important; }
+}
+
+/* ===== BOTTOM NAV BAR (mobile only) ===== */
+.bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 150;
+  height: 58px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  align-items: center; justify-content: space-around;
+  padding: 0 4px;
+}
+@media (max-width: 767px) { .bottom-nav { display: flex; } }
+.bottom-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; padding: 6px 0; border: none; background: transparent;
+  color: var(--text3); font-size: 0.6em; font-weight: 700;
+  gap: 3px; cursor: pointer; transition: color 0.18s;
+  border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.bottom-nav-item i { font-size: 1.45em; transition: transform 0.18s; }
+.bottom-nav-item.active { color: var(--primary); }
+.bottom-nav-item.active i { transform: scale(1.15); }
+.bottom-nav-item:hover { color: var(--primary); }
 </style>
 
   <!-- ===== PWA ===== -->
@@ -4865,7 +4958,30 @@ window.addEventListener('appinstalled', () => {
   console.log('PWA installed ✅');
 });
 </script>
-
+<!-- BOTTOM NAV (mobile only) -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bottom-nav-item active" onclick="showSection('feed'); setBottomNav(this)">
+    <i class="fa-solid fa-house"></i> Home
+  </button>
+  <button class="bottom-nav-item" onclick="showSection('notes'); setBottomNav(this)">
+    <i class="fa-solid fa-book"></i> Notes
+  </button>
+  <button class="bottom-nav-item" onclick="openEventsModal(); setBottomNav(this)">
+    <i class="fa-solid fa-calendar"></i> Events
+  </button>
+  <button class="bottom-nav-item" onclick="openStudyRoomModal(); setBottomNav(this)">
+    <i class="fa-solid fa-users"></i> Study
+  </button>
+  <button class="bottom-nav-item" onclick="toggleHamburger(); setBottomNav(this)">
+    <i class="fa-solid fa-bars"></i> More
+  </button>
+</nav>
+<script>
+function setBottomNav(el) {
+  document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
 </body>
 
 </html>

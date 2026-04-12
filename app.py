@@ -2380,7 +2380,7 @@ def manifest():
     import json
     data = {
       "name": "CampusConnect — SREC",
-      "short_name": "CampusConnect",
+      "short_name": "Connect",        # ✅ changed
       "description": "AI-Powered Campus Social Platform for SREC",
       "start_url": "/dashboard",
       "scope": "/",
@@ -2391,11 +2391,11 @@ def manifest():
       "lang": "en",
       "categories": ["education", "social"],
       "icons": [
-        {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-        {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
-        {"src": "/static/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any maskable"},
-        {"src": "/static/icons/icon-96x96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any maskable"},
-        {"src": "/static/icons/icon-72x72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any maskable"}
+        {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/static/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any"},
+        {"src": "/static/icons/icon-96x96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any"},
+        {"src": "/static/icons/icon-72x72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any"}
       ]
     }
     response = app.response_class(
@@ -2404,6 +2404,9 @@ def manifest():
         mimetype='application/manifest+json'
     )
     return response
+@app.route('/.well-known/assetlinks.json')
+def asset_links():
+    return app.send_static_file('.well-known/assetlinks.json')
 
 @app.route('/.well-known/assetlinks.json')
 def asset_links():
