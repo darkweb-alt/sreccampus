@@ -2408,27 +2408,6 @@ def manifest():
 def asset_links():
     return app.send_static_file('.well-known/assetlinks.json')
 
-@app.route('/.well-known/assetlinks.json')
-def asset_links():
-    # Replace sha256_cert_fingerprints with your Bubblewrap signing key fingerprint
-    links = [{
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {
-            "namespace": "android_app",
-            "package_name": "in.connectsrec.app",
-            "sha256_cert_fingerprints": [
-                "REPLACE_WITH_YOUR_BUBBLEWRAP_SIGNING_KEY_FINGERPRINT"
-            ]
-        }
-    }]
-    response = app.response_class(
-        response=_json_mod.dumps(links, indent=2),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
-
-
 # ============================================================
 # CONTACT FORM
 # ============================================================
