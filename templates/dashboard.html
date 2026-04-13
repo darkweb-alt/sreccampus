@@ -4735,8 +4735,11 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileItem.className = 'mobile-nav-item';
         const icon = item.querySelector('i');
         const text = item.querySelector('span');
-        if (icon) mobileItem.innerHTML += `<i class="${icon.className}"></i>`;
-        if (text) mobileItem.innerHTML += `<span>${text.textContent}</span>`;
+     const labelText = Array.from(item.childNodes)
+    .filter(n => n.nodeType === 3 && n.textContent.trim())
+    .map(n => n.textContent.trim())
+    .join('') || (item.querySelector('span') ? item.querySelector('span').textContent.trim() : '');
+mobileItem.innerHTML = `<i class="${icon ? icon.className : 'fas fa-circle'}"></i> <span>${labelText}</span>`;
         mobileItem.addEventListener('click', () => {
           item.click();
           hamburgerBtn.classList.remove('active');
